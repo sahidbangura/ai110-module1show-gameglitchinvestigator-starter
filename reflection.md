@@ -47,29 +47,29 @@ What this shows: both hints are backwards (60 vs 50 says HIGHER; 40 vs 50 says L
 
 ## 2. How did you use AI as a teammate?
 
-- **Tools:** Claude Code (agent mode in VS Code). I used it to read the starter code, refactor the logic, write tests, and fill in the documentation.
-- **AI explanation of a bug:** When I asked Claude Code why the hints were inconsistent, it explained that `app.py` converted the secret to a string on every even attempt, so `check_guess` hit its `except TypeError` fallback and compared strings. In string order `"9" > "50"`, so a guess of 9 was reported "Too High". It also pointed out that the hint messages in `check_guess` were swapped, which is a separate bug that affected every attempt. I confirmed both by running the starter functions (trace above).
-- **Correct suggestion:** Claude Code suggested moving `check_guess`, `parse_guess`, `get_range_for_difficulty` and `update_score` into `logic_utils.py`, swapping the reversed hint messages, and deleting the `str(secret)` conversion on even attempts. That was correct because the root cause was in the logic and the string conversion made the comparison string-based. I verified it with pytest (`check_guess(60, 50)` returns "Too High" with a "LOWER" hint, and `check_guess(9, 50)` returns "Too Low"). I still need to confirm the hints in the live game with `streamlit run app.py`.
-- **Suggestion not accepted as written:** The starter tests expected `check_guess` to return a plain string, while the function returns an `(outcome, message)` pair that `app.py` unpacks. Changing the function to match the tests would have broken the app, so I kept the tuple and rewrote the tests to unpack it. I also did not keep the AI's original `try/except TypeError` string-comparison fallback in `check_guess`. It hid the real bug instead of fixing it. I verified my version by running pytest and confirming all tests pass.
+- **Tool:** I used Claude Code inside VS Code. I had it read the starter code, move the logic into `logic_utils.py`, write tests, and help me fill in the docs.
+- **AI explanation of a bug:** I asked why the hints were so inconsistent. Claude Code found that `app.py` turned the secret into a string on every even attempt, so `check_guess` fell into its `except TypeError` branch and compared strings. As strings, `"9" > "50"`, so a guess of 9 came back "Too High". It also noticed the hint messages were swapped, which was a second, separate bug. I checked both by running the starter functions myself (the trace above matches).
+- **Suggestion that was correct:** Claude Code suggested moving the four logic functions into `logic_utils.py`, swapping the hint messages, and deleting the `str(secret)` conversion. That was right because the problem lived in the logic, not the UI. I confirmed it with pytest: 60 vs. 50 gives "Too High" with a "LOWER" hint, and 9 vs. 50 gives "Too Low".
+- **Suggestion I did not accept as written:** The starter tests expected `check_guess` to return a plain string, but the app unpacks an `(outcome, message)` pair. Changing the function to fit the tests would have broken the game, so I kept the tuple and rewrote the tests instead. I also dropped the old `try/except TypeError` string fallback, because it hid the real bug. I checked this by running pytest and playing a round.
 
 ---
 
 ## 3. Debugging and testing your fixes
 
-- **How I decided a bug was fixed:** I reproduced it first using the Bug Reproduction Log above, then re-ran the same input after the fix and checked that the expected result appeared. For logic bugs I also required a pytest case that failed before the fix and passed after.
-- **Test that showed something:** `test_check_guess_compares_numbers_not_strings` checks that a guess of 9 against a secret of 50 returns "Too Low". Compared as strings, "9" > "50", so this is exactly the wrong answer the even-attempt bug produced. `test_guess_too_high` checks that 60 vs. 50 returns "Too High" with a "LOWER" hint. All 31 tests pass with `pytest` (7 core tests plus 24 parametrized edge-case tests for negatives, decimals, huge values and blank input).
-- **AI and tests:** Claude Code wrote the test cases and pointed out that the starter tests compared a tuple to a string, which is why they could never pass as written. I reviewed each test to make sure it targeted a specific bug.
+- **How I knew a bug was fixed:** I reproduced it first (the table and trace in section 1), then ran the same input after the fix. For logic bugs I also wanted a pytest case that would have caught it.
+- **A test that taught me something:** `test_check_guess_compares_numbers_not_strings` checks that 9 vs. 50 returns "Too Low". It is the exact case the even-attempt bug got wrong, so it proves that fix. I also added 24 edge-case tests for negative numbers, decimals, huge values and blank input. All 31 tests pass.
+- **AI and tests:** Claude Code wrote the tests and pointed out that the starter tests compared a tuple to a string, so they could never pass as written. I read each test to make sure it targeted one specific bug.
 
 ---
 
 ## 4. What did you learn about Streamlit and state?
 
-Streamlit reruns the whole script from top to bottom every time you click a button or type in a box, so ordinary variables are reset on each run. `st.session_state` is a dictionary that survives those reruns, so anything that has to persist, like the secret number, attempts, score and history, belongs there and should only be created when it is missing. The original bugs came from mishandling this: values were reset or changed on a rerun when they should have been kept (and the New Game reset missed some of the stored values).
+Every time you click a button or type in a box, Streamlit runs your whole script again from the top, so normal variables start over each time. `st.session_state` is like a notebook that survives those reruns, so anything that has to stick around, like the secret number, attempts and score, goes in there and is only created when it is missing. A few of my bugs came from this: some values were reset or changed on a rerun when they should have been kept, and New Game forgot to clear everything it stored.
 
 ---
 
 ## 5. Looking ahead: your developer habits
 
-- **Habit to reuse:** Writing a small reproduction log and a failing test before fixing, so I can prove each fix worked.
-- **Do differently next time:** Give the AI one bug per chat with the relevant files attached, and review the diff of every file it touches before accepting it.
-- **How this changed my view of AI code:** AI-generated code can look complete and still contain subtle bugs, such as a swapped hint or a hidden type conversion, so I need to test and read it instead of trusting it.
+- **A habit I'll reuse:** Writing down exactly how to reproduce a bug before touching the code, then adding a test for it. It made it obvious when a fix really worked.
+- **What I'd do differently:** Give the AI one bug at a time with the right files attached, and read the diff of every file it changes before accepting it.
+- **How this changed my view of AI code:** AI-generated code can look finished and still hide small bugs, like a swapped message or a quiet type conversion, so I need to run it and test it instead of trusting it.
