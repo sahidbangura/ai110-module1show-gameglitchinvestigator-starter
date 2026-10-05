@@ -14,6 +14,24 @@ The first time I ran it, the game looked normal: a difficulty selector, a text b
 4. **Wrong range text and off-by-one attempts.** Trigger: select Easy and look at the banner. Expected: "between 1 and 20" and the full attempt allowance. Actual: always "between 1 and 100", and "Attempts left" is one too low at the start. Cause: the hardcoded text in `st.info` (`app.py` lines 109-112) and `attempts` initialised to 1 (`app.py` line 96).
 5. **Hard is easier than Normal.** Trigger: select Hard. Expected: a harder, wider range than Normal. Actual: 1-50, narrower than Normal's 1-100. Cause: `get_range_for_difficulty` (`app.py` lines 9-10).
 
+**Terminal trace of the starter code (commit f651d72), secret = 50**
+
+I ran the starter's own functions with the same secret conversion the Submit block applied (secret becomes a string on even attempts). In the live game I saw the same wrong hints, e.g. "Go HIGHER!" after guessing above the secret.
+
+```
+== Starter code, Normal difficulty, secret = 50 ==
+range for Hard: (1, 50) | range for Normal: (1, 100)
+attempt 1: guess 60 vs secret 50 (int) -> Too High | 📈 Go HIGHER!
+attempt 2: guess 40 vs secret '50' (str) -> Too Low | 📉 Go LOWER!
+attempt 3: guess 60 vs secret 50 (int) -> Too High | 📈 Go HIGHER!
+attempt 4: guess 9 vs secret '50' (str) -> Too High | 📈 Go HIGHER!
+score after Win on attempt 1: 80
+score after Too High on attempt 2: 5
+parse_guess("3.7") -> (True, 3, None)
+```
+
+What this shows: both hints are backwards (60 vs 50 says HIGHER; 40 vs 50 says LOWER); on attempt 4 a guess of 9 is called "Too High" against 50 because "9" > "50" as strings; a wrong "Too High" guess on an even attempt *adds* 5 points; a win on attempt 1 scores 80 instead of 90; and 3.7 is silently truncated to 3.
+
 **Bug Reproduction Log**
 
 | Input Used | Expected Behavior | Actual Behavior | Console Output / Error | Suspected Code Location |
@@ -30,6 +48,7 @@ The first time I ran it, the game looked normal: a difficulty selector, a text b
 ## 2. How did you use AI as a teammate?
 
 - **Tools:** Claude Code (agent mode in VS Code). I used it to read the starter code, refactor the logic, write tests, and fill in the documentation.
+- **AI explanation of a bug:** When I asked Claude Code why the hints were inconsistent, it explained that `app.py` converted the secret to a string on every even attempt, so `check_guess` hit its `except TypeError` fallback and compared strings. In string order `"9" > "50"`, so a guess of 9 was reported "Too High". It also pointed out that the hint messages in `check_guess` were swapped, which is a separate bug that affected every attempt. I confirmed both by running the starter functions (trace above).
 - **Correct suggestion:** Claude Code suggested moving `check_guess`, `parse_guess`, `get_range_for_difficulty` and `update_score` into `logic_utils.py`, swapping the reversed hint messages, and deleting the `str(secret)` conversion on even attempts. That was correct because the root cause was in the logic and the string conversion made the comparison string-based. I verified it with pytest (`check_guess(60, 50)` returns "Too High" with a "LOWER" hint, and `check_guess(9, 50)` returns "Too Low"). I still need to confirm the hints in the live game with `streamlit run app.py`.
 - **Suggestion not accepted as written:** The starter tests expected `check_guess` to return a plain string, while the function returns an `(outcome, message)` pair that `app.py` unpacks. Changing the function to match the tests would have broken the app, so I kept the tuple and rewrote the tests to unpack it. I also did not keep the AI's original `try/except TypeError` string-comparison fallback in `check_guess`. It hid the real bug instead of fixing it. I verified my version by running pytest and confirming all tests pass.
 
@@ -38,7 +57,7 @@ The first time I ran it, the game looked normal: a difficulty selector, a text b
 ## 3. Debugging and testing your fixes
 
 - **How I decided a bug was fixed:** I reproduced it first using the Bug Reproduction Log above, then re-ran the same input after the fix and checked that the expected result appeared. For logic bugs I also required a pytest case that failed before the fix and passed after.
-- **Test that showed something:** `test_check_guess_compares_numbers_not_strings` checks that a guess of 9 against a secret of 50 returns "Too Low". Compared as strings, "9" > "50", so this is exactly the wrong answer the even-attempt bug produced. `test_guess_too_high` checks that 60 vs. 50 returns "Too High" with a "LOWER" hint. All 7 tests pass with `pytest`.
+- **Test that showed something:** `test_check_guess_compares_numbers_not_strings` checks that a guess of 9 against a secret of 50 returns "Too Low". Compared as strings, "9" > "50", so this is exactly the wrong answer the even-attempt bug produced. `test_guess_too_high` checks that 60 vs. 50 returns "Too High" with a "LOWER" hint. All 31 tests pass with `pytest` (7 core tests plus 24 parametrized edge-case tests for negatives, decimals, huge values and blank input).
 - **AI and tests:** Claude Code wrote the test cases and pointed out that the starter tests compared a tuple to a string, which is why they could never pass as written. I reviewed each test to make sure it targeted a specific bug.
 
 ---

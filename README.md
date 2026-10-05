@@ -106,4 +106,4 @@ tests/test_game_logic.py::test_parse_guess_without_range_still_works PASSED [100
 
 ## 🚀 Stretch Features
 
-- [ ] [If you choose to complete Challenge 4, describe the Enhanced UI changes here — a screenshot is optional]
+- [x] **Challenge 1: Advanced Edge-Case Testing.** 24 parametrized pytest cases in `tests/test_game_logic.py` cover negative numbers, zero, out-of-range and huge values, non-whole decimals, `inf`/`nan`, blanks and the range boundaries. `parse_guess` in `logic_utils.py` was hardened to pass them. Output is in Test Results above; prompts and rationale are in `ai_interactions.md`.
