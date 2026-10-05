@@ -10,9 +10,12 @@ def get_range_for_difficulty(difficulty: str):
     return 1, 100
 
 
-def parse_guess(raw: str):
+def parse_guess(raw: str, low=None, high=None):
     """
     Parse user input into an int guess.
+
+    Accepts whole numbers (including "5.0"); rejects blanks, text, non-whole
+    decimals, inf/nan, and, when low/high are given, values outside that range.
 
     Returns: (ok: bool, guess_int: int | None, error_message: str | None)
     """
@@ -24,14 +27,21 @@ def parse_guess(raw: str):
         return False, None, "Enter a guess."
 
     try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
+        number = float(raw) if "." in raw else int(raw)
     except (ValueError, OverflowError):
         return False, None, "That is not a number."
 
-    return True, value, None
+    if isinstance(number, float):
+        if number != number or number in (float("inf"), float("-inf")):
+            return False, None, "That is not a number."
+        if not number.is_integer():
+            return False, None, "Enter a whole number."
+        number = int(number)
+
+    if low is not None and high is not None and not low <= number <= high:
+        return False, None, f"Enter a number between {low} and {high}."
+
+    return True, number, None
 
 
 def check_guess(guess, secret):
