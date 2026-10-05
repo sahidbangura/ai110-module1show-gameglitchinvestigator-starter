@@ -37,6 +37,7 @@ It wrote the code, ran away, and now the game is unplayable.
 - Hard (1-50) was easier than Normal (1-100).
 - Scoring rewarded wrong "Too High" guesses on even attempts and over-penalised wins (`attempt + 1`).
 - Changing difficulty kept the old secret, which could be outside the new range.
+- The "Attempts left" banner and debug panel were drawn before the submit logic ran, so they lagged one guess behind.
 
 **Fixes applied**
 
@@ -46,21 +47,36 @@ It wrote the code, ran away, and now the game is unplayable.
 - Banner now uses the real range; attempts start at 0.
 - Simplified scoring: wins score `100 - 10 * attempts` (min 10), wrong guesses -5.
 - `parse_guess` now strips whitespace.
+- The banner and debug panel render after the submit logic, so they show current values.
 
 ## 📸 Demo Walkthrough
 
-1. Run `python -m streamlit run app.py` and pick a difficulty in the sidebar; the banner shows the matching range.
-2. Enter a guess and click Submit Guess; the hint tells you to go higher or lower correctly.
-3. Keep guessing; attempts left counts down and the score drops 5 per miss.
-4. Guess the secret to win (balloons, final score) or run out of attempts to lose.
-5. Click New Game to reset everything, or change difficulty to start a fresh round.
+Sample game on **Normal** (range 1-100, 8 attempts). The secret is 63, visible in "Developer Debug Info".
+
+1. The sidebar shows "Range: 1 to 100" and "Attempts allowed: 8"; the banner says "Guess a number between 1 and 100. Attempts left: 8", and the score is 0.
+2. User enters a guess of **40** and clicks Submit. The game shows "📈 Go HIGHER!" (Too Low). Attempts left drops to 7 and the score becomes **-5**.
+3. User enters **80**. The game shows "📉 Go LOWER!" (Too High). Attempts left is 6 and the score becomes **-10**.
+4. User enters **abc**. The game shows "That is not a number." and no hint is given.
+5. User enters **63** on attempt 4 (invalid input also counts as an attempt). The game shows balloons and "You won! The secret was 63. Final score: 50" (win = 100 - 10 x 4 = 60 points, added to -10).
+6. Further submits show "You already won. Start a new game to play again." Clicking **New Game** resets the score, attempts, history and status, and picks a new secret in the current difficulty's range.
+
+If the player uses all 8 attempts without guessing the number, the game shows "Out of attempts!" with the secret and the final score, and locks until New Game is clicked.
 
 ## 🧪 Test Results
 
 ```
-pytest
-...... [100%]
-6 passed
+$ pytest -v
+collected 7 items
+
+tests/test_game_logic.py::test_winning_guess PASSED                      [ 14%]
+tests/test_game_logic.py::test_guess_too_high PASSED                     [ 28%]
+tests/test_game_logic.py::test_guess_too_low PASSED                      [ 42%]
+tests/test_game_logic.py::test_hard_range_is_wider_than_normal PASSED    [ 57%]
+tests/test_game_logic.py::test_parse_guess_valid_and_invalid PASSED      [ 71%]
+tests/test_game_logic.py::test_score_win_and_miss PASSED                 [ 85%]
+tests/test_game_logic.py::test_check_guess_compares_numbers_not_strings PASSED [100%]
+
+============================== 7 passed in 0.09s ==============================
 ```
 
 ## 🚀 Stretch Features
